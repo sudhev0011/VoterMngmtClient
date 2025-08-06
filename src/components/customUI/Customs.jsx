@@ -106,19 +106,18 @@ export const Alert = ({ children, variant = 'default', className = '' }) => {
   );
 };
 
-export const SkeletonDiv = ()=>{
-
-  return(
-    <div className='flex flex-col gap-2'>
-      <Skeleton className="h-6 w-[950px]" />
-      <Skeleton className="h-6 w-[880px]" />
-      <Skeleton className="h-6 w-[850px]" />
-      <Skeleton className="h-6 w-[820px]" />
-      <Skeleton className="h-6 w-[800px]" />
-      <Skeleton className="h-6 w-[770px]" />
-      <Skeleton className="h-6 w-[720px]" />
-      <Skeleton className="h-6 w-[700px]" />
-      <Skeleton className="h-6 w-[680px]" />
+export const SkeletonDiv = () => {
+  return (
+    <div className="flex flex-col gap-2 px-4">
+      <Skeleton className="h-6 w-full sm:w-11/12 md:w-10/12 lg:w-9/12 xl:w-8/12" />
+      <Skeleton className="h-6 w-full sm:w-11/12 md:w-10/12 lg:w-8/12 xl:w-7/12" />
+      <Skeleton className="h-6 w-full sm:w-11/12 md:w-9/12 lg:w-7/12 xl:w-6/12" />
+      <Skeleton className="h-6 w-full sm:w-10/12 md:w-8/12 lg:w-6/12 xl:w-5/12" />
+      <Skeleton className="h-6 w-full sm:w-10/12 md:w-8/12 lg:w-6/12 xl:w-5/12" />
+      <Skeleton className="h-6 w-full sm:w-9/12 md:w-7/12 lg:w-5/12 xl:w-4/12" />
+      <Skeleton className="h-6 w-full sm:w-9/12 md:w-6/12 lg:w-5/12 xl:w-3/12" />
+      <Skeleton className="h-6 w-full sm:w-8/12 md:w-6/12 lg:w-4/12 xl:w-3/12" />
+      <Skeleton className="h-6 w-full sm:w-7/12 md:w-5/12 lg:w-3/12 xl:w-2/12" />
     </div>
-  )
-}
+  );
+};
