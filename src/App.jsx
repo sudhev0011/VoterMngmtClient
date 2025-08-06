@@ -1,50 +1,19 @@
 import React, { useState, useEffect } from 'react';
-import { BrowserRouter as Router, Link, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Link } from 'react-router-dom';
 import axios from 'axios';
 import { useDispatch, useSelector } from 'react-redux';
 import { setUserCredentials, clearUserCredentials } from './store/slices/authSlice';
 import UserRoutes from './routes/UserRoutes';
 import AdminRoutes from './routes/AdminRoutes';
 import Login from './components/Login';
-import { Vote, Menu, X, Home, Shield, UserCheck, Users, LogOut } from 'lucide-react';
-
-const Button = ({ children, variant = 'default', size = 'default', className = '', onClick, disabled, ...props }) => {
-  const baseClasses = 'inline-flex items-center justify-center rounded-md font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none ring-offset-background';
-  
-  const variants = {
-    default: 'bg-slate-900 text-white hover:bg-slate-800',
-    destructive: 'bg-red-500 text-white hover:bg-red-600',
-    outline: 'border border-slate-200 hover:bg-slate-50 hover:text-slate-900',
-    secondary: 'bg-slate-100 text-slate-900 hover:bg-slate-200',
-    ghost: 'hover:bg-slate-100 hover:text-slate-900',
-    link: 'underline-offset-4 hover:underline text-blue-600'
-  };
-  
-  const sizes = {
-    default: 'h-10 py-2 px-4',
-    sm: 'h-9 px-3 rounded-md',
-    lg: 'h-11 px-8 rounded-md',
-    icon: 'h-10 w-10'
-  };
-  
-  return (
-    <button
-      className={`${baseClasses} ${variants[variant]} ${sizes[size]} ${className}`}
-      onClick={onClick}
-      disabled={disabled}
-      {...props}
-    >
-      {children}
-    </button>
-  );
-};
+import { Vote, Menu, X, Home, Shield, UserCheck, LogOut } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 function App() {
   const [role, setRole] = useState(null);
   const [isNavOpen, setIsNavOpen] = useState(false);
   const dispatch = useDispatch();
   const { isAuthenticated } = useSelector((state) => state.auth);
-  console.log('isAuthenticated', isAuthenticated)
   
   useEffect(() => {
     const checkAuth = async () => {
@@ -83,7 +52,7 @@ function App() {
   const navItems = [
     { icon: Home, label: 'Home', href: '/', show: true },
     { icon: Shield, label: 'Admin Panel', href: '/admin', show: role === 'admin' },
-    { icon: UserCheck, label: 'Todo List', href: '/todos', show: role === 'user' }
+    { icon: UserCheck, label: 'Quota List', href: '/todos', show: role === 'user' }
   ];
 
   return (

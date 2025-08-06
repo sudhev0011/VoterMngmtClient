@@ -3,107 +3,100 @@ import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
 import { setUserCredentials } from '../store/slices/authSlice';
-import { Vote, AlertCircle } from 'lucide-react';
+import { Vote, AlertCircle, Eye, EyeOff, UserPlus, LogIn } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
-// Shadcn-like components
-const Button = ({ children, variant = 'default', size = 'default', className = '', onClick, disabled, type, ...props }) => {
-  const baseClasses = 'inline-flex items-center justify-center rounded-md font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none ring-offset-background';
-  
-  const variants = {
-    default: 'bg-slate-900 text-white hover:bg-slate-800',
-    destructive: 'bg-red-500 text-white hover:bg-red-600',
-    outline: 'border border-slate-200 hover:bg-slate-50 hover:text-slate-900',
-    secondary: 'bg-slate-100 text-slate-900 hover:bg-slate-200',
-    ghost: 'hover:bg-slate-100 hover:text-slate-900'
-  };
-  
-  const sizes = {
-    default: 'h-10 py-2 px-4',
-    sm: 'h-9 px-3 rounded-md',
-    lg: 'h-11 px-8 rounded-md'
-  };
-  
-  return (
-    <button
-      type={type}
-      className={`${baseClasses} ${variants[variant]} ${sizes[size]} ${className}`}
-      onClick={onClick}
-      disabled={disabled}
-      {...props}
-    >
-      {children}
-    </button>
-  );
-};
-
-const Card = ({ children, className = '' }) => (
-  <div className={`rounded-lg border bg-white border-slate-200 shadow-sm ${className}`}>
-    {children}
-  </div>
-);
-
-const CardHeader = ({ children, className = '' }) => (
-  <div className={`flex flex-col space-y-1.5 p-6 ${className}`}>
-    {children}
-  </div>
-);
-
-const CardTitle = ({ children, className = '' }) => (
-  <h3 className={`text-2xl font-semibold leading-none tracking-tight ${className}`}>
-    {children}
-  </h3>
-);
-
-const CardContent = ({ children, className = '' }) => (
-  <div className={`p-6 pt-0 ${className}`}>
-    {children}
-  </div>
-);
-
-const Input = ({ className = '', ...props }) => (
-  <input
-    className={`flex h-10 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-slate-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 ${className}`}
-    {...props}
-  />
-);
-
-const Alert = ({ children, variant = 'default', className = '' }) => {
-  const variants = {
-    default: 'bg-blue-50 border-blue-200 text-blue-800',
-    destructive: 'bg-red-50 border-red-200 text-red-800'
-  };
-  
-  return (
-    <div className={`relative w-full rounded-lg border p-4 ${variants[variant]} ${className}`}>
-      <div className="flex items-center">
-        <AlertCircle className="h-4 w-4 mr-2" />
-        {children}
-      </div>
-    </div>
-  );
-};
-
-const Login = ({ setRole }) => {
-  const [credentials, setCredentials] = useState({ username: '', password: '' });
-  const [error, setError] = useState('');
+const AuthComponent = ({ setRole }) => {
+  const [loginCredentials, setLoginCredentials] = useState({ username: '', password: '' });
+  const [registerCredentials, setRegisterCredentials] = useState({ username: '', password: '', confirmPassword: '' });
+  const [loginError, setLoginError] = useState('');
+  const [registerError, setRegisterError] = useState('');
+  const [registerSuccess, setRegisterSuccess] = useState('');
+  const [showLoginPassword, setShowLoginPassword] = useState(false);
+  const [showRegisterPassword, setShowRegisterPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [loginLoading, setLoginLoading] = useState(false);
+  const [registerLoading, setRegisterLoading] = useState(false);
   const navigate = useNavigate();
   const dispatch = useDispatch();
 
-  const handleChange = (e) => {
-    setCredentials({ ...credentials, [e.target.name]: e.target.value });
+  const handleLoginChange = (e) => {
+    setLoginCredentials({ ...loginCredentials, [e.target.name]: e.target.value });
+    setLoginError('');
   };
 
-  const handleSubmit = async (e) => {
+  const handleRegisterChange = (e) => {
+    setRegisterCredentials({ ...registerCredentials, [e.target.name]: e.target.value });
+    setRegisterError('');
+    setRegisterSuccess('');
+  };
+
+  const validateRegisterForm = () => {
+    if (!registerCredentials.username.trim()) {
+      setRegisterError('Username is required');
+      return false;
+    }
+    if (!registerCredentials.password.trim()) {
+      setRegisterError('Password is required');
+      return false;
+    }
+    if (registerCredentials.password.length < 6) {
+      setRegisterError('Password must be at least 6 characters long');
+      return false;
+    }
+    if (registerCredentials.password !== registerCredentials.confirmPassword) {
+      setRegisterError('Passwords do not match');
+      return false;
+    }
+    return true;
+  };
+
+  const handleLoginSubmit = async (e) => {
     e.preventDefault();
+    setLoginLoading(true);
+    setLoginError('');
+    
     try {
-      const res = await axios.post(`${import.meta.env.VITE_API_BASE}auth/login`, credentials, {
+      const res = await axios.post(`${import.meta.env.VITE_API_BASE}auth/login`, loginCredentials, {
         withCredentials: true,
       });
-      dispatch(setUserCredentials({ role: res.data.role, userId: res.data.userId, isAuthenticated: res.data.isAuthenticated }));
+      dispatch(setUserCredentials({ 
+        role: res.data.role, 
+        userId: res.data.userId, 
+        isAuthenticated: res.data.isAuthenticated 
+      }));
       setRole(res.data.role);
       navigate(res.data.role === 'admin' ? '/admin' : '/');
     } catch (err) {
-      setError(err.response?.data?.message || 'Login failed');
+      setLoginError(err.response?.data?.message || 'Login failed. Please try again.');
+    } finally {
+      setLoginLoading(false);
+    }
+  };
+
+  const handleRegisterSubmit = async (e) => {
+    e.preventDefault();
+    
+    if (!validateRegisterForm()) return;
+    
+    setRegisterLoading(true);
+    setRegisterError('');
+    setRegisterSuccess('');
+    
+    try {
+      await axios.post(`${import.meta.env.VITE_API_BASE}auth/register`, registerCredentials);
+      setRegisterSuccess('Registration successful! Please login with your credentials.');
+      setRegisterCredentials({ username: '', password: '', confirmPassword: '' });
+      navigate('/login')
+    } catch (err) {
+      setRegisterError(err.response?.data?.message || 'Registration failed. Please try again.');
+    } finally {
+      setRegisterLoading(false);
     }
   };
 
@@ -111,53 +104,184 @@ const Login = ({ setRole }) => {
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-slate-50 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         <Card className="shadow-xl">
-          <CardHeader className="text-center pb-2">
-            <div className="mx-auto w-12 h-12 bg-blue-600 rounded-xl flex items-center justify-center mb-4">
-              <Vote className="h-6 w-6 text-white" />
+          <CardHeader className="text-center pb-6">
+            <div className="mx-auto w-16 h-16 bg-gradient-to-br from-blue-600 to-blue-700 rounded-2xl flex items-center justify-center mb-4 shadow-lg">
+              <Vote className="h-8 w-8 text-white" />
             </div>
-            <CardTitle className="text-2xl">Welcome Back</CardTitle>
-            <p className="text-slate-500 mt-2">Sign in to your voter management account</p>
+            <CardTitle className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-blue-800 bg-clip-text text-transparent">
+              Voter Management
+            </CardTitle>
+            <p className="text-slate-600 mt-2">Secure access to your voting platform</p>
           </CardHeader>
           
-          <CardContent className="space-y-4">
-            {error && (
-              <Alert variant="destructive">
-                {error}
-              </Alert>
-            )}
-            
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-slate-700">Username</label>
-                <Input
-                  type="text"
-                  name="username"
-                  value={credentials.username}
-                  onChange={handleChange}
-                  placeholder="Enter your username"
-                  className="h-11"
-                />
-              </div>
+          <CardContent>
+            <Tabs defaultValue="login" className="w-full">
+              <TabsList className="grid w-full grid-cols-2 mb-6">
+                <TabsTrigger value="login" className="flex items-center gap-2">
+                  <LogIn className="h-4 w-4" />
+                  Login
+                </TabsTrigger>
+                <TabsTrigger value="register" className="flex items-center gap-2">
+                  <UserPlus className="h-4 w-4" />
+                  Register
+                </TabsTrigger>
+              </TabsList>
               
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-slate-700">Password</label>
-                <Input
-                  type="password"
-                  name="password"
-                  value={credentials.password}
-                  onChange={handleChange}
-                  placeholder="Enter your password"
-                  className="h-11"
-                />
-              </div>
+              <TabsContent value="login" className="space-y-4">
+                {loginError && (
+                  <Alert variant="destructive">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertDescription>{loginError}</AlertDescription>
+                  </Alert>
+                )}
+                
+                <form onSubmit={handleLoginSubmit} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="login-username">Username</Label>
+                    <Input
+                      id="login-username"
+                      type="text"
+                      name="username"
+                      value={loginCredentials.username}
+                      onChange={handleLoginChange}
+                      placeholder="Enter your username"
+                      required
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="login-password">Password</Label>
+                    <div className="relative">
+                      <Input
+                        id="login-password"
+                        type={showLoginPassword ? 'text' : 'password'}
+                        name="password"
+                        value={loginCredentials.password}
+                        onChange={handleLoginChange}
+                        placeholder="Enter your password"
+                        required
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                        onClick={() => setShowLoginPassword(!showLoginPassword)}
+                      >
+                        {showLoginPassword ? (
+                          <EyeOff className="h-4 w-4 text-slate-400" />
+                        ) : (
+                          <Eye className="h-4 w-4 text-slate-400" />
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+                  
+                  <Button
+                    type="submit"
+                    className="w-full"
+                    disabled={loginLoading}
+                  >
+                    {loginLoading ? 'Signing in...' : 'Sign In'}
+                  </Button>
+                </form>
+              </TabsContent>
               
-              <Button
-                type="submit"
-                className="w-full h-11 mt-6"
-              >
-                Sign In
-              </Button>
-            </form>
+              <TabsContent value="register" className="space-y-4">
+                {registerError && (
+                  <Alert variant="destructive">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertDescription>{registerError}</AlertDescription>
+                  </Alert>
+                )}
+                
+                {registerSuccess && (
+                  <Alert>
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertDescription className="text-green-700">{registerSuccess}</AlertDescription>
+                  </Alert>
+                )}
+                
+                <form onSubmit={handleRegisterSubmit} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="register-username">Username</Label>
+                    <Input
+                      id="register-username"
+                      type="text"
+                      name="username"
+                      value={registerCredentials.username}
+                      onChange={handleRegisterChange}
+                      placeholder="Choose a username"
+                      required
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="register-password">Password</Label>
+                    <div className="relative">
+                      <Input
+                        id="register-password"
+                        type={showRegisterPassword ? 'text' : 'password'}
+                        name="password"
+                        value={registerCredentials.password}
+                        onChange={handleRegisterChange}
+                        placeholder="Create a password (min. 6 characters)"
+                        required
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                        onClick={() => setShowRegisterPassword(!showRegisterPassword)}
+                      >
+                        {showRegisterPassword ? (
+                          <EyeOff className="h-4 w-4 text-slate-400" />
+                        ) : (
+                          <Eye className="h-4 w-4 text-slate-400" />
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="confirm-password">Confirm Password</Label>
+                    <div className="relative">
+                      <Input
+                        id="confirm-password"
+                        type={showConfirmPassword ? 'text' : 'password'}
+                        name="confirmPassword"
+                        value={registerCredentials.confirmPassword}
+                        onChange={handleRegisterChange}
+                        placeholder="Confirm your password"
+                        required
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      >
+                        {showConfirmPassword ? (
+                          <EyeOff className="h-4 w-4 text-slate-400" />
+                        ) : (
+                          <Eye className="h-4 w-4 text-slate-400" />
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+                  
+                  <Button
+                    type="submit"
+                    className="w-full"
+                    disabled={registerLoading}
+                  >
+                    {registerLoading ? 'Creating Account...' : 'Create Account'}
+                  </Button>
+                </form>
+              </TabsContent>
+            </Tabs>
           </CardContent>
         </Card>
       </div>
@@ -165,4 +289,4 @@ const Login = ({ setRole }) => {
   );
 };
 
-export default Login;
+export default AuthComponent;

@@ -1,92 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useSelector } from 'react-redux';
-import { UserCheck, CheckCircle2, Trash2, AlertCircle } from 'lucide-react';
-
-const Button = ({ children, variant = 'default', size = 'default', className = '', onClick, disabled, ...props }) => {
-  const baseClasses = 'inline-flex items-center justify-center rounded-md font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none ring-offset-background';
-  
-  const variants = {
-    default: 'bg-slate-900 text-white hover:bg-slate-800',
-    destructive: 'bg-red-500 text-white hover:bg-red-600',
-    outline: 'border border-slate-200 hover:bg-slate-50 hover:text-slate-900',
-    secondary: 'bg-slate-100 text-slate-900 hover:bg-slate-200',
-    ghost: 'hover:bg-slate-100 hover:text-slate-900'
-  };
-  
-  const sizes = {
-    default: 'h-10 py-2 px-4',
-    sm: 'h-9 px-3 rounded-md',
-    lg: 'h-11 px-8 rounded-md',
-    icon: 'h-10 w-10'
-  };
-  
-  return (
-    <button
-      className={`${baseClasses} ${variants[variant]} ${sizes[size]} ${className}`}
-      onClick={onClick}
-      disabled={disabled}
-      {...props}
-    >
-      {children}
-    </button>
-  );
-};
-
-const Card = ({ children, className = '' }) => (
-  <div className={`rounded-lg border bg-white border-slate-200 shadow-sm ${className}`}>
-    {children}
-  </div>
-);
-
-const CardHeader = ({ children, className = '' }) => (
-  <div className={`flex flex-col space-y-1.5 p-6 ${className}`}>
-    {children}
-  </div>
-);
-
-const CardTitle = ({ children, className = '' }) => (
-  <h3 className={`text-2xl font-semibold leading-none tracking-tight ${className}`}>
-    {children}
-  </h3>
-);
-
-const CardContent = ({ children, className = '' }) => (
-  <div className={`p-6 pt-0 ${className}`}>
-    {children}
-  </div>
-);
-
-const Badge = ({ children, variant = 'default', className = '' }) => {
-  const variants = {
-    default: 'bg-slate-900 text-white',
-    secondary: 'bg-slate-100 text-slate-900',
-    destructive: 'bg-red-500 text-white',
-    success: 'bg-green-500 text-white'
-  };
-  
-  return (
-    <div className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold transition-colors ${variants[variant]} ${className}`}>
-      {children}
-    </div>
-  );
-};
-
-const Alert = ({ children, variant = 'default', className = '' }) => {
-  const variants = {
-    default: 'bg-blue-50 border-blue-200 text-blue-800',
-    destructive: 'bg-red-50 border-red-200 text-red-800'
-  };
-  
-  return (
-    <div className={`relative w-full rounded-lg border p-4 ${variants[variant]} ${className}`}>
-      <div className="flex items-center">
-        <AlertCircle className="h-4 w-4 mr-2" />
-        {children}
-      </div>
-    </div>
-  );
-};
+import { UserCheck, CheckCircle2, Trash2 } from 'lucide-react';
+import { Alert, Badge, Button, Card, CardHeader, CardTitle, CardContent } from "./customUI/Customs";
 
 const TodoList = ({ role }) => {
   const [todos, setTodos] = useState([]);
@@ -147,7 +63,7 @@ const TodoList = ({ role }) => {
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0">
           <CardTitle className="flex items-center space-x-2">
             <UserCheck className="h-5 w-5" />
-            <span>My Voter Todo List</span>
+            <span>My Voter Quota List</span>
           </CardTitle>
           
           {totalCount > 0 && (
