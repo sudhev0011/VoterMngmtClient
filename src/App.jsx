@@ -2,18 +2,19 @@ import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Link } from 'react-router-dom';
 import axios from 'axios';
 import { useDispatch, useSelector } from 'react-redux';
-import { setUserCredentials, clearUserCredentials } from './store/slices/authSlice';
+import { setUserCredentials, clearUserCredentials, setAuthLoading } from './store/slices/authSlice';
 import UserRoutes from './routes/UserRoutes';
 import AdminRoutes from './routes/AdminRoutes';
 import Login from './components/Login';
 import { Vote, Menu, X, Home, Shield, UserCheck, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import LoadingComponent from './components/customUI/LoadingComponent';
 
 function App() {
   const [role, setRole] = useState(null);
   const [isNavOpen, setIsNavOpen] = useState(false);
   const dispatch = useDispatch();
-  const { isAuthenticated } = useSelector((state) => state.auth);
+  const { isAuthenticated, authLoading } = useSelector((state) => state.auth);
   
   useEffect(() => {
     const checkAuth = async () => {
@@ -26,6 +27,8 @@ function App() {
       } catch (err) {
         dispatch(clearUserCredentials());
         setRole(null);
+      }finally{
+        dispatch(setAuthLoading(false));
       }
     };
     checkAuth();
@@ -40,6 +43,10 @@ function App() {
       console.error('Logout error:', err.message);
     }
   };
+
+  if(authLoading){
+    return <LoadingComponent/>
+  }
 
   if (!isAuthenticated) {
     return (
