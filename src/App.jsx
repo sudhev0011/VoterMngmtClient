@@ -44,7 +44,7 @@ function App() {
     }
   };
 
-  if(authLoading){
+  if(true){
     return <LoadingComponent/>
   }
 
