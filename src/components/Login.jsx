@@ -133,8 +133,29 @@ const AuthComponent = ({ setRole }) => {
     }
   };
 
+  const onGoogleSuccess = async(authCredential)=>{
+    try {
+      setLoginLoading(true);
+      setRegisterLoading(true);
+      const res = await axios.post(`${import.meta.env.VITE_API_BASE}auth/google`,{token:authCredential.credential});
+      dispatch(setUserCredentials({role: res.data.role, userId: res.data.userId, isAuthenticated: res.data.isAuthenticated}));
+      navigate('/');
+    } catch (error) {
+      setLoginError(
+        error.response?.data?.message || "Login failed. Please try again."
+      );
+    }finally{
+      setRegisterLoading(false);
+      setLoginLoading(false);
+    }
+  }
+
+  const onGoogleFailure = (message)=>{
+    setLoginError(message);
+  }
+
   return (
-    <GoogleOAuthProvider>
+    <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID}>
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-slate-50 flex items-center justify-center p-4">
         <div className="w-full max-w-md">
           <Card className="shadow-xl">
@@ -153,8 +174,8 @@ const AuthComponent = ({ setRole }) => {
             <CardContent>
               <div className="text-center">
                 <GoogleLogin
-                  // onSuccess={onGoogleSuccess}
-                  // onError={onGoogleFailure}
+                  onSuccess={onGoogleSuccess}
+                  onError={onGoogleFailure}
                   render={(renderProps) => (
                     <Button
                       className="w-full mb-4 bg-transparent hover:bg-transparent text-black outline outline-1 outline-gray-200"
