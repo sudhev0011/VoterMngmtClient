@@ -137,7 +137,7 @@ const AuthComponent = ({ setRole }) => {
     try {
       setLoginLoading(true);
       setRegisterLoading(true);
-      const res = await axios.post(`${import.meta.env.VITE_API_BASE}auth/google`,{token:authCredential.credential});
+      const res = await axios.post(`${import.meta.env.VITE_API_BASE}auth/google`,{token:authCredential.credential},{withCredentials: true});
       dispatch(setUserCredentials({role: res.data.role, userId: res.data.userId, isAuthenticated: res.data.isAuthenticated}));
       navigate('/');
     } catch (error) {
