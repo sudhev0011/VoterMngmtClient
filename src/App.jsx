@@ -11,10 +11,9 @@ import { Button } from '@/components/ui/button';
 import LoadingComponent from './components/customUI/LoadingComponent';
 
 function App() {
-  const [role, setRole] = useState(null);
   const [isNavOpen, setIsNavOpen] = useState(false);
   const dispatch = useDispatch();
-  const { isAuthenticated, authLoading } = useSelector((state) => state.auth);
+  const { isAuthenticated, authLoading, role } = useSelector((state) => state.auth);
   
   useEffect(() => {
     const checkAuth = async () => {
@@ -26,7 +25,6 @@ function App() {
         setRole(res.data.role);
       } catch (err) {
         dispatch(clearUserCredentials());
-        setRole(null);
       }finally{
         dispatch(setAuthLoading(false));
       }
@@ -51,7 +49,7 @@ function App() {
   if (!isAuthenticated) {
     return (
       <Router>
-        <Login setRole={setRole} />
+        <Login  />
       </Router>
     );
   }
@@ -142,9 +140,9 @@ function App() {
 
               {/* Content Routes */}
               {role === 'admin' ? (
-                <AdminRoutes role={role} setRole={setRole} />
+                <AdminRoutes role={role}  />
               ) : (
-                <UserRoutes role={role} setRole={setRole} isAuthenticated={isAuthenticated} />
+                <UserRoutes role={role}  isAuthenticated={isAuthenticated} />
               )}
             </div>
           </div>

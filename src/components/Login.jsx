@@ -12,7 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
-const AuthComponent = ({ setRole }) => {
+const AuthComponent = ( ) => {
   const [loginCredentials, setLoginCredentials] = useState({
     username: "",
     password: "",
@@ -90,7 +90,6 @@ const AuthComponent = ({ setRole }) => {
           isAuthenticated: res.data.isAuthenticated,
         })
       );
-      setRole(res.data.role);
       navigate(res.data.role === "admin" ? "/admin" : "/");
     } catch (err) {
       setLoginError(

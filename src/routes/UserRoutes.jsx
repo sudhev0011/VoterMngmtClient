@@ -4,12 +4,12 @@ import VoterList from '../components/VotersList';
 import TodoList from '../components/TodoList';
 import Login from '../components/Login';
 
-const UserRoutes = ({ role, setRole, isAuthenticated }) => {
+const UserRoutes = ({ role, isAuthenticated }) => {
   return (
     <Routes>
       <Route path="/" element={<VoterList role={role} isAuthenticated={isAuthenticated}/>} />
       <Route path="/todos" element={<TodoList role={role} />} />
-      <Route path="/login" element={<Login setRole={setRole} />} />
+      <Route path="/login" element={<Login  />} />
       <Route path="*" element={<Navigate to="/login" replace />} />
     </Routes>
   );

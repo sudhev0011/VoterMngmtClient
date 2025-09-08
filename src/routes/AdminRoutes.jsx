@@ -21,7 +21,7 @@ const AdminRoutes = ({ role, setRole }) => {
           )
         }
       />
-      <Route path="/login" element={<Login setRole={setRole} />} />
+      <Route path="/login" element={<Login  />} />
       <Route path="*" element={<Navigate to="/login" replace />} />
     </Routes>
   );
