@@ -14,7 +14,7 @@ function App() {
   const [isNavOpen, setIsNavOpen] = useState(false);
   const dispatch = useDispatch();
   const { isAuthenticated, authLoading, role } = useSelector((state) => state.auth);
-  
+  console.log(isAuthenticated, role)
   useEffect(() => {
     const checkAuth = async () => {
       try {
@@ -22,7 +22,7 @@ function App() {
           withCredentials: true,
         });
         dispatch(setUserCredentials({ role: res.data.role, userId: res.data.userId, isAuthenticated: res.data.isAuthenticated }));
-        setRole(res.data.role);
+        // setRole(res.data.role);
       } catch (err) {
         dispatch(clearUserCredentials());
       }finally{
