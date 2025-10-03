@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { debounce } from "lodash";
 import {
   Users,
@@ -12,8 +12,6 @@ import {
   ArrowDown,
   UserPlus,
   UserCheck,
-  ChevronLeft,
-  ChevronRight,
 } from "lucide-react";
 import axios from "axios";
 import {
@@ -36,60 +34,107 @@ const VoterList = ({ role, isAuthenticated }) => {
   const [error, setError] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [isFetchingMore, setIsFetchingMore] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [sortBy, setSortBy] = useState("serialNo");
   const [sortOrder, setSortOrder] = useState("asc");
   const [todoVoters, setTodoVoters] = useState(new Set());
   const [loadingTodos, setLoadingTodos] = useState({});
-  const [pagination, setPagination] = useState({
-    currentPage: 1,
-    totalPages: 1,
-    totalCount: 0,
-    pageSize: 50,
-    hasNextPage: false,
-    hasPreviousPage: false,
-  });
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const [totalCount, setTotalCount] = useState(0);
+  const pageSize = 50;
 
-  // Fetch voters with pagination
-  const fetchVoters = async () => {
-    try {
-      setIsLoading(true);
-      const res = await axios.get(`${import.meta.env.VITE_API_BASE}voters`, {
-        params: {
-          sortBy,
-          sortOrder,
-          page: pagination.currentPage,
-          limit: pagination.pageSize,
-          search: searchTerm,
-        },
-        withCredentials: true,
-      });
-      setVoters(res.data.data);
-      setPagination(res.data.pagination);
-      setIsLoading(false);
-    } catch (err) {
-      setError(err.response?.data?.message || "Failed to fetch voters");
-      setIsLoading(false);
-    }
-  };
+  const bottomDivRef = useRef(null);
+
+  const fetchVoters = useCallback(
+    async (pageNum, append = false) => {
+      if (!hasMore && append) return;
+      try {
+        if (append) {
+          setIsFetchingMore(true);
+        } else {
+          setIsLoading(true);
+          setVoters([]);
+        }
+        const res = await axios.get(`${import.meta.env.VITE_API_BASE}voters`, {
+          params: {
+            sortBy,
+            sortOrder,
+            page: pageNum,
+            limit: pageSize,
+            search: searchTerm,
+          },
+          withCredentials: true,
+        });
+
+        const newVoters = res.data.data || [];
+        setVoters((prev) => (append ? [...prev, ...newVoters] : newVoters));
+        setTotalCount(res.data.pagination.totalCount || 0);
+        setHasMore(res.data.pagination.hasNextPage || false);
+        setIsLoading(false);
+        setIsFetchingMore(false);
+      } catch (err) {
+        setError(err.response?.data?.message || "Failed to fetch voters");
+        setIsLoading(false);
+        setIsFetchingMore(false);
+      }
+    },
+    [sortBy, sortOrder, searchTerm, hasMore]
+  );
 
   useEffect(() => {
-    fetchVoters();
+    setPage(1);
+    setVoters([]);
+    setHasMore(true);
+    fetchVoters(1);
     if (isAuthenticated) {
       fetchTodoVoters();
     }
-  }, [sortBy, sortOrder, pagination.currentPage, pagination.pageSize, searchTerm, isAuthenticated]);
+  }, [sortBy, sortOrder, searchTerm, isAuthenticated]);
 
-  // Optimized debounced search function
+  useEffect(() => {
+    if (page > 1) {
+      fetchVoters(page, true);
+    }
+  }, [page, fetchVoters]);
+
+  useEffect(() => {
+    if (isLoading || isFetchingMore || !hasMore) return;
+
+    let observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasMore) {
+          setPage((prev) => prev + 1);
+        }
+      },
+      {
+        root: null,
+        rootMargin: "300px",
+        threshold: 0.01,
+      }
+    );
+
+    if (bottomDivRef.current) {
+      observer.observe(bottomDivRef.current);
+    }
+
+    return () => {
+      if (observer) {
+        observer.disconnect();
+      }
+    };
+  }, [isLoading, isFetchingMore, hasMore]);
+
   const debouncedSearchFunction = useCallback(
     debounce((term) => {
       setSearchTerm(term);
-      setPagination((prev) => ({ ...prev, currentPage: 1 })); // Reset to first page on search
+      setPage(1);
+      setHasMore(true);
     }, 300),
     []
   );
 
-  // Handle search input
   const handleSearchChange = useCallback(
     (e) => {
       const value = e.target.value;
@@ -106,7 +151,6 @@ const VoterList = ({ role, isAuthenticated }) => {
     }
   }, [successMessage]);
 
-  // Cleanup debounced function on unmount
   useEffect(() => {
     return () => {
       debouncedSearchFunction.cancel();
@@ -120,9 +164,7 @@ const VoterList = ({ role, isAuthenticated }) => {
       });
       const todoVoterIds = new Set(res.data.map((todo) => todo.voterId._id));
       setTodoVoters(todoVoterIds);
-    } catch (err) {
-      console.error("Failed to fetch todo voters:", err);
-    }
+    } catch (err) {}
   };
 
   const handleAddToTodo = async (voterId) => {
@@ -207,7 +249,9 @@ const VoterList = ({ role, isAuthenticated }) => {
         }
       );
       setEditing(null);
-      fetchVoters();
+      setPage(1);
+      setHasMore(true);
+      fetchVoters(1);
       setSuccessMessage("Voter updated successfully!");
     } catch (err) {
       setError(err.response?.data?.message || "Failed to update voter");
@@ -221,7 +265,9 @@ const VoterList = ({ role, isAuthenticated }) => {
       await axios.delete(`${import.meta.env.VITE_API_BASE}voters/${id}`, {
         withCredentials: true,
       });
-      fetchVoters();
+      setPage(1);
+      setHasMore(true);
+      fetchVoters(1);
       setSuccessMessage("Voter deleted successfully!");
     } catch (err) {
       setError(err.response?.data?.message || "Failed to delete voter");
@@ -239,7 +285,8 @@ const VoterList = ({ role, isAuthenticated }) => {
       setSortBy(field);
       setSortOrder("asc");
     }
-    setPagination((prev) => ({ ...prev, currentPage: 1 })); // Reset to first page on sort
+    setPage(1);
+    setHasMore(true);
   };
 
   const getSortIcon = (field) => {
@@ -251,19 +298,6 @@ const VoterList = ({ role, isAuthenticated }) => {
     ) : (
       <ArrowDown className="h-4 w-4 text-blue-600" />
     );
-  };
-
-  const handlePageChange = (newPage) => {
-    setPagination((prev) => ({ ...prev, currentPage: newPage }));
-  };
-
-  const handlePageSizeChange = (e) => {
-    const newSize = parseInt(e.target.value);
-    setPagination((prev) => ({
-      ...prev,
-      pageSize: newSize,
-      currentPage: 1, // Reset to first page when changing page size
-    }));
   };
 
   const renderTodoButton = useCallback(
@@ -307,7 +341,7 @@ const VoterList = ({ role, isAuthenticated }) => {
         </Button>
       );
     },
-    [todoVoters, loadingTodos, handleAddToTodo, handleRemoveFromTodo]
+    [todoVoters, loadingTodos]
   );
 
   return (
@@ -317,11 +351,10 @@ const VoterList = ({ role, isAuthenticated }) => {
           <CardTitle className="flex items-center space-x-2">
             <Users className="h-5 w-5" />
             <span>Registered Voters</span>
-            <Badge variant="secondary">{pagination.totalCount}</Badge>
+            <Badge variant="secondary">{totalCount}</Badge>
           </CardTitle>
 
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center space-y-2 sm:space-y-0 sm:space-x-2">
-            {/* Sort Controls */}
             <div className="flex items-center space-x-2">
               <Select
                 value={sortBy}
@@ -352,7 +385,6 @@ const VoterList = ({ role, isAuthenticated }) => {
               </Button>
             </div>
 
-            {/* Search */}
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
               <Input
@@ -393,231 +425,231 @@ const VoterList = ({ role, isAuthenticated }) => {
           </div>
         ) : (
           <>
-            {/* Desktop Table View */}
-            <div className="hidden lg:block overflow-x-auto">
+            <div className="hidden lg:block">
               {!isLoading && (
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b border-slate-200">
-                      <th className="text-left py-3 px-2 font-medium text-slate-700">
-                        <button
-                          onClick={() => handleSort("serialNo")}
-                          className="flex items-center space-x-1 hover:text-slate-900 transition-colors"
-                        >
-                          <span>Serial No</span>
-                          {getSortIcon("serialNo")}
-                        </button>
-                      </th>
-                      <th className="text-left py-3 px-2 font-medium text-slate-700">
-                        <button
-                          onClick={() => handleSort("name")}
-                          className="flex items-center space-x-1 hover:text-slate-900 transition-colors"
-                        >
-                          <span>Name</span>
-                          {getSortIcon("name")}
-                        </button>
-                      </th>
-                      <th className="text-left py-3 px-2 font-medium text-slate-700">
-                        <button
-                          onClick={() => handleSort("guardianName")}
-                          className="flex items-center space-x-1 hover:text-slate-900 transition-colors"
-                        >
-                          <span>Guardian's Name</span>
-                          {getSortIcon("guardianName")}
-                        </button>
-                      </th>
-                      <th className="text-left py-3 px-2 font-medium text-slate-700">
-                        <button
-                          onClick={() => handleSort("houseNo")}
-                          className="flex items-center space-x-1 hover:text-slate-900 transition-colors"
-                        >
-                          <span>House No.</span>
-                          {getSortIcon("houseNo")}
-                        </button>
-                      </th>
-                      <th className="text-left py-3 px-2 font-medium text-slate-700">
-                        <button
-                          onClick={() => handleSort("houseName")}
-                          className="flex items-center space-x-1 hover:text-slate-900 transition-colors"
-                        >
-                          <span>House Name</span>
-                          {getSortIcon("houseName")}
-                        </button>
-                      </th>
-                      <th className="text-left py-3 px-2 font-medium text-slate-700">
-                        <button
-                          onClick={() => handleSort("genderAge")}
-                          className="flex items-center space-x-1 hover:text-slate-900 transition-colors"
-                        >
-                          <span>Gender / Age</span>
-                          {getSortIcon("genderAge")}
-                        </button>
-                      </th>
-                      <th className="text-left py-3 px-2 font-medium text-slate-700">
-                        <button
-                          onClick={() => handleSort("idCardNo")}
-                          className="flex items-center space-x-1 hover:text-slate-900 transition-colors"
-                        >
-                          <span>ID Card No.</span>
-                          {getSortIcon("idCardNo")}
-                        </button>
-                      </th>
-                      <th className="text-left py-3 px-2 font-medium text-slate-700">
-                        {isAuthenticated ? "Todo & Actions" : "Actions"}
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {voters.map((voter) => (
-                      <tr
-                        key={voter._id}
-                        className="border-b border-slate-100 hover:bg-slate-50"
-                      >
-                        {editing === voter._id && role === "admin" ? (
-                          <>
-                            <td className="py-3 px-2">
-                              <Input
-                                type="number"
-                                name="serialNo"
-                                value={editForm.serialNo}
-                                onChange={handleChange}
-                                className="w-20"
-                              />
-                            </td>
-                            <td className="py-3 px-2">
-                              <Input
-                                type="text"
-                                name="name"
-                                value={editForm.name}
-                                onChange={handleChange}
-                                className="min-w-32"
-                              />
-                            </td>
-                            <td className="py-3 px-2">
-                              <Input
-                                type="text"
-                                name="guardianName"
-                                value={editForm.guardianName}
-                                onChange={handleChange}
-                                className="min-w-32"
-                              />
-                            </td>
-                            <td className="py-3 px-2">
-                              <Input
-                                type="text"
-                                name="houseNo"
-                                value={editForm.houseNo}
-                                onChange={handleChange}
-                                className="w-20"
-                              />
-                            </td>
-                            <td className="py-3 px-2">
-                              <Input
-                                type="text"
-                                name="houseName"
-                                value={editForm.houseName}
-                                onChange={handleChange}
-                                className="min-w-24"
-                              />
-                            </td>
-                            <td className="py-3 px-2">
-                              <Input
-                                type="text"
-                                name="genderAge"
-                                value={editForm.genderAge}
-                                onChange={handleChange}
-                                className="w-20"
-                              />
-                            </td>
-                            <td className="py-3 px-2">
-                              <Input
-                                type="text"
-                                name="idCardNo"
-                                value={editForm.idCardNo}
-                                onChange={handleChange}
-                                className="min-w-32"
-                              />
-                            </td>
-                            <td className="py-3 px-2">
-                              <div className="flex space-x-1">
-                                <Button
-                                  size="sm"
-                                  onClick={() => handleUpdate(voter._id)}
-                                  className="bg-green-600 hover:bg-green-700"
-                                >
-                                  <Save className="h-3 w-3" />
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => setEditing(null)}
-                                >
-                                  <XCircle className="h-3 w-3" />
-                                </Button>
-                              </div>
-                            </td>
-                          </>
-                        ) : (
-                          <>
-                            <td className="py-3 px-2 font-mono text-sm">
-                              {voter.serialNo}
-                            </td>
-                            <td className="py-3 px-2 font-medium">
-                              {voter.name}
-                            </td>
-                            <td className="py-3 px-2 text-slate-600">
-                              {voter.guardianName}
-                            </td>
-                            <td className="py-3 px-2 text-slate-600">
-                              {voter.houseNo}
-                            </td>
-                            <td className="py-3 px-2 text-slate-600">
-                              {voter.houseName}
-                            </td>
-                            <td className="py-3 px-2 text-slate-600">
-                              {voter.genderAge}
-                            </td>
-                            <td className="py-3 px-2 font-mono text-sm text-slate-600">
-                              {voter.idCardNo}
-                            </td>
-                            <td className="py-3 px-2">
-                              <div className="flex space-x-1">
-                                {isAuthenticated && renderTodoButton(voter)}
-                                {role === "admin" && (
-                                  <>
-                                    <Button
-                                      size="sm"
-                                      variant="outline"
-                                      onClick={() => handleEdit(voter)}
-                                    >
-                                      <Edit3 className="h-3 w-3" />
-                                    </Button>
-                                    <Button
-                                      size="sm"
-                                      variant="destructive"
-                                      onClick={() => handleDelete(voter._id)}
-                                    >
-                                      <Trash2 className="h-3 w-3" />
-                                    </Button>
-                                  </>
-                                )}
-                                {!isAuthenticated && !role && (
-                                  <span className="text-sm text-slate-500">
-                                    Login to add to todo
-                                  </span>
-                                )}
-                              </div>
-                            </td>
-                          </>
-                        )}
+                <div className="relative">
+                  <table className="w-full table-auto">
+                    <thead>
+                      <tr className="border-b border-slate-200">
+                        <th className="text-left py-3 px-2 font-medium text-slate-700">
+                          <button
+                            onClick={() => handleSort("serialNo")}
+                            className="flex items-center space-x-1 hover:text-slate-900 transition-colors"
+                          >
+                            <span>Serial No</span>
+                            {getSortIcon("serialNo")}
+                          </button>
+                        </th>
+                        <th className="text-left py-3 px-2 font-medium text-slate-700">
+                          <button
+                            onClick={() => handleSort("name")}
+                            className="flex items-center space-x-1 hover:text-slate-900 transition-colors"
+                          >
+                            <span>Name</span>
+                            {getSortIcon("name")}
+                          </button>
+                        </th>
+                        <th className="text-left py-3 px-2 font-medium text-slate-700">
+                          <button
+                            onClick={() => handleSort("guardianName")}
+                            className="flex items-center space-x-1 hover:text-slate-900 transition-colors"
+                          >
+                            <span>Guardian's Name</span>
+                            {getSortIcon("guardianName")}
+                          </button>
+                        </th>
+                        <th className="text-left py-3 px-2 font-medium text-slate-700">
+                          <button
+                            onClick={() => handleSort("houseNo")}
+                            className="flex items-center space-x-1 hover:text-slate-900 transition-colors"
+                          >
+                            <span>House No.</span>
+                            {getSortIcon("houseNo")}
+                          </button>
+                        </th>
+                        <th className="text-left py-3 px-2 font-medium text-slate-700">
+                          <button
+                            onClick={() => handleSort("houseName")}
+                            className="flex items-center space-x-1 hover:text-slate-900 transition-colors"
+                          >
+                            <span>House Name</span>
+                            {getSortIcon("houseName")}
+                          </button>
+                        </th>
+                        <th className="text-left py-3 px-2 font-medium text-slate-700">
+                          <button
+                            onClick={() => handleSort("genderAge")}
+                            className="flex items-center space-x-1 hover:text-slate-900 transition-colors"
+                          >
+                            <span>Gender / Age</span>
+                            {getSortIcon("genderAge")}
+                          </button>
+                        </th>
+                        <th className="text-left py-3 px-2 font-medium text-slate-700">
+                          <button
+                            onClick={() => handleSort("idCardNo")}
+                            className="flex items-center space-x-1 hover:text-slate-900 transition-colors"
+                          >
+                            <span>ID Card No.</span>
+                            {getSortIcon("idCardNo")}
+                          </button>
+                        </th>
+                        <th className="text-left py-3 px-2 font-medium text-slate-700">
+                          {isAuthenticated ? "Todo & Actions" : "Actions"}
+                        </th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody>
+                      {voters.map((voter) => (
+                        <tr
+                          key={voter._id}
+                          className="border-b border-slate-100 hover:bg-slate-50 min-h-[48px]"
+                        >
+                          {editing === voter._id && role === "admin" ? (
+                            <>
+                              <td className="py-3 px-2">
+                                <Input
+                                  type="number"
+                                  name="serialNo"
+                                  value={editForm.serialNo}
+                                  onChange={handleChange}
+                                  className="w-20"
+                                />
+                              </td>
+                              <td className="py-3 px-2">
+                                <Input
+                                  type="text"
+                                  name="name"
+                                  value={editForm.name}
+                                  onChange={handleChange}
+                                  className="min-w-32"
+                                />
+                              </td>
+                              <td className="py-3 px-2">
+                                <Input
+                                  type="text"
+                                  name="guardianName"
+                                  value={editForm.guardianName}
+                                  onChange={handleChange}
+                                  className="min-w-32"
+                                />
+                              </td>
+                              <td className="py-3 px-2">
+                                <Input
+                                  type="text"
+                                  name="houseNo"
+                                  value={editForm.houseNo}
+                                  onChange={handleChange}
+                                  className="w-20"
+                                />
+                              </td>
+                              <td className="py-3 px-2">
+                                <Input
+                                  type="text"
+                                  name="houseName"
+                                  value={editForm.houseName}
+                                  onChange={handleChange}
+                                  className="min-w-24"
+                                />
+                              </td>
+                              <td className="py-3 px-2">
+                                <Input
+                                  type="text"
+                                  name="genderAge"
+                                  value={editForm.genderAge}
+                                  onChange={handleChange}
+                                  className="w-20"
+                                />
+                              </td>
+                              <td className="py-3 px-2">
+                                <Input
+                                  type="text"
+                                  name="idCardNo"
+                                  value={editForm.idCardNo}
+                                  onChange={handleChange}
+                                  className="min-w-32"
+                                />
+                              </td>
+                              <td className="py-3 px-2">
+                                <div className="flex space-x-1">
+                                  <Button
+                                    size="sm"
+                                    onClick={() => handleUpdate(voter._id)}
+                                    className="bg-green-600 hover:bg-green-700"
+                                  >
+                                    <Save className="h-3 w-3" />
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => setEditing(null)}
+                                  >
+                                    <XCircle className="h-3 w-3" />
+                                  </Button>
+                                </div>
+                              </td>
+                            </>
+                          ) : (
+                            <>
+                              <td className="py-3 px-2 font-mono text-sm">
+                                {voter.serialNo}
+                              </td>
+                              <td className="py-3 px-2 font-medium">
+                                {voter.name}
+                              </td>
+                              <td className="py-3 px-2 text-slate-600">
+                                {voter.guardianName}
+                              </td>
+                              <td className="py-3 px-2 text-slate-600">
+                                {voter.houseNo}
+                              </td>
+                              <td className="py-3 px-2 text-slate-600">
+                                {voter.houseName}
+                              </td>
+                              <td className="py-3 px-2 text-slate-600">
+                                {voter.genderAge}
+                              </td>
+                              <td className="py-3 px-2 font-mono text-sm text-slate-600">
+                                {voter.idCardNo}
+                              </td>
+                              <td className="py-3 px-2">
+                                <div className="flex space-x-1">
+                                  {isAuthenticated && renderTodoButton(voter)}
+                                  {role === "admin" && (
+                                    <>
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() => handleEdit(voter)}
+                                      >
+                                        <Edit3 className="h-3 w-3" />
+                                      </Button>
+                                      <Button
+                                        size="sm"
+                                        variant="destructive"
+                                        onClick={() => handleDelete(voter._id)}
+                                      >
+                                        <Trash2 className="h-3 w-3" />
+                                      </Button>
+                                    </>
+                                  )}
+                                  {!isAuthenticated && !role && (
+                                    <span className="text-sm text-slate-500">
+                                      Login to add to todo
+                                    </span>
+                                  )}
+                                </div>
+                              </td>
+                            </>
+                          )}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               )}
             </div>
 
-            {/* Mobile/Tablet Card View */}
             <div className="lg:hidden space-y-4">
               {voters.map((voter) => (
                 <div
@@ -800,47 +832,20 @@ const VoterList = ({ role, isAuthenticated }) => {
               ))}
             </div>
 
-            {/* Pagination Controls */}
-            {!isLoading && voters.length > 0 && (
-              <div className="mt-6 flex flex-col sm:flex-row items-center justify-between gap-4">
-                <div className="flex items-center space-x-2">
-                  <span className="text-sm text-slate-600">
-                    Showing {voters.length} of {pagination.totalCount} voters
-                  </span>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <Select
-                    value={pagination.pageSize.toString()}
-                    onChange={handlePageSizeChange}
-                    className="w-24"
-                  >
-                    <option value="10">10 per page</option>
-                    <option value="25">25 per page</option>
-                    <option value="50">50 per page</option>
-                    <option value="100">100 per page</option>
-                  </Select>
-                  <div className="flex items-center space-x-1">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handlePageChange(pagination.currentPage - 1)}
-                      disabled={!pagination.hasPreviousPage}
-                    >
-                      <ChevronLeft className="h-4 w-4" />
-                    </Button>
-                    <span className="text-sm text-slate-600">
-                      Page {pagination.currentPage} of {pagination.totalPages}
-                    </span>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handlePageChange(pagination.currentPage + 1)}
-                      disabled={!pagination.hasNextPage}
-                    >
-                      <ChevronRight className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
+            <div
+              ref={bottomDivRef}
+              className="h-12 w-full bg-transparent mt-4"
+            ></div>
+
+            {isFetchingMore && (
+              <div className="text-center py-4">
+                <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto"></div>
+              </div>
+            )}
+
+            {!hasMore && voters.length > 0 && (
+              <div className="text-center py-4 text-slate-500">
+                No more voters to load
               </div>
             )}
           </>
