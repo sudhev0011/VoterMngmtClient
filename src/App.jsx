@@ -9,6 +9,7 @@ import Login from './components/Login';
 import { Vote, Menu, X, Home, Shield, UserCheck, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import LoadingComponent from './components/customUI/LoadingComponent';
+import CircularText from './components/ui/CircularText';
 
 function App() {
   const [isNavOpen, setIsNavOpen] = useState(false);
@@ -42,8 +43,8 @@ function App() {
     }
   };
 
-  if(authLoading){
-    return <LoadingComponent/>
+  if(true){
+    return <div className='fixed inset-0 flex flex-col items-center justify-center'><CircularText text='Loading.Loading.Loading' onHover='goBonkers' /></div>
   }
 
   if (!isAuthenticated) {
