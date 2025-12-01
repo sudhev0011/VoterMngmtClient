@@ -43,7 +43,7 @@ function App() {
     }
   };
 
-  if(true){
+  if(authLoading){
     return <div className='fixed inset-0 flex flex-col items-center justify-center'><CircularText text='Loading.Loading.Loading' onHover='goBonkers' /></div>
   }
 
